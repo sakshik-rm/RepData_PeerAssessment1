@@ -1,0 +1,100 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+Libraries needed
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+## Loading and preprocessing the data
+```{r}
+dat <- read.csv("activity.csv")
+
+dates <- as.Date(dat$date, "%Y-%m-%d")
+dat$date <- dates
+```
+
+
+## What is mean total number of steps taken per day?
+```{r}
+
+total_steps <- as.data.frame(dat %>% group_by(date) %>% summarise(sum=sum(steps, na.rm = TRUE))) 
+plot(total_steps$date, total_steps$sum, type="h", xlab="Date", ylab="Total steps", main = "Total number of steps taken per day", lwd=4)
+
+avgs <- dat %>%
+    group_by(date) %>%
+    summarize(mean_X1 = mean(steps, na.rm=TRUE))
+
+medians <- dat %>%
+    group_by(date) %>%
+    summarize(median_X1 = median(steps, na.rm=TRUE))
+```
+
+
+## What is the average daily activity pattern?
+```{r}
+splint <- split(dat$steps, dat$interval)
+avgperint <- sapply(splint, mean, na.rm=TRUE)
+plot(unique(dat$interval), avgperint, type="l", xlab="Interval", ylab="Average steps per interval across all days", main = "Average daily activity pattern")
+```
+
+
+## Imputing missing values
+```{r}
+max_stepint <- which.max(avgperint)
+#104th interval = 835
+
+sumNA <- sum(is.na(dat))
+```
+
+```{r}
+avgs <- replace(avgs, is.na(avgs), 0)
+repvec <- rep(avgs[,2], 288)
+
+rawsteps <- dat$steps
+
+rawsteps[is.na(dat$steps)] <- repvec
+```
+
+```{r}
+newdat <- dat
+newdat$steps <- rawsteps[[1]]
+#newdat
+
+sumperdayn <- newdat %>% group_by(date) %>% summarise(sum=sum(steps, na.rm = TRUE))
+
+plot(sumperdayn$date, sumperdayn$sum, type="h", xlab="Date", ylab="Total steps", main = "Total number of steps taken per day", lwd=4)
+
+avgsnew <- newdat %>%
+    group_by(date) %>%
+    summarize(mean_X1 = mean(steps, na.rm=TRUE))
+
+mediansnew <- newdat %>%
+    group_by(date) %>%
+    summarize(median_X1 = median(steps, na.rm=TRUE))
+```
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+newdat$weekdays <- weekdays(newdat$date)
+newdat$daytype <- ifelse((newdat$weekdays=="Saturday" | newdat$weekdays=="Sunday"), "weekend", "weekday")
+
+datweekdays <- newdat[newdat$daytype=="weekday",]
+datweekends <- newdat[newdat$daytype=="weekend",]
+
+wkdaysplitdat <- split(datweekdays$steps, datweekdays$interval)
+wkendsplitdat <- split(datweekends$steps, datweekends$interval)
+
+avgweekday_int <- as.data.frame(sapply(wkdaysplitdat, mean))
+avgweekend_int <- as.data.frame(sapply(wkendsplitdat, mean))
+
+par(mfcol=c(2,1))
+plot(unique(newdat$interval), avgweekday_int[,1], type="l", xlab = "Interval", ylab = "Average steps across Weekdays")
+plot(unique(newdat$interval), avgweekend_int[,1], type="l", xlab = "Interval", ylab = "Average steps across Weekends")
+```
+
